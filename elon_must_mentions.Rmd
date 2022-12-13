@@ -31,47 +31,37 @@ con <- DBI::dbConnect(odbc::odbc(),
 
 ```{r}
 # Grab field names
-dbListFields(con,"elonMentions")
+dbListFields(con,"tweets")
 ```
 ```{r}
-mentions <- dbGetQuery(con,"select date,username,
-            content FROM elonMentions;")
+mentions <- dbGetQuery(con,"select date,content FROM tweets;")
+mentions$date <- ymd(mentions$date)
 ```
 
 ```{r}
-mentions %>% count(date,sort =T) %>% ggplot() + geom_col(aes(x=date,y=n)) + labs(title ="Elon Must Mentions by Day",
-                                                                                 y="Number of Mentiions")
+mentions %>% count(date,sort =T) %>% ggplot() + geom_line(aes(x=date,y=n)) + labs(title ="Elon Musk Tweets by Day",  y="Number of Tweets") + geom_smooth(aes(x=date,y=n))
 ```
 
-```{r}
-mentions %>% count(username,sort=T) %>% slice_max(n,n=10) %>%
-  ggplot() + geom_col(aes(x=reorder(username,n),username,y=n)) +
-  coord_flip() + labs(title = "Top 10 Mentions by Username",x="Username",y="Count of Mentions")
-```
+
 ## Begin Text Analysis
 
 ```{r}
 content <- mentions %>% select(content) %>% rename(txt = content)
 ```
 ```{r}
-word_tokens <- content %>% unnest_tokens(word, txt)
+tokens <- content %>% unnest_tokens(word, txt)
 ```
-
 ```{r}
-# dbWriteTable(con, "tokens",content_words ,overwrite=TRUE)
-```
-
-## PUll down cleaner words
-
-```{r}
-tokens <- dbGetQuery(con,"select word FROM tokens;")
-
 data(stop_words)
 
 tidy_tokens <- tokens %>%
   anti_join(stop_words)
 dbWriteTable(con, "tokens",tidy_tokens ,overwrite=TRUE)
 ```
+```{r}
+dbWriteTable(con, "tokens",tidy_tokens ,overwrite=TRUE)
+```
+
 ## Count Tokens and Plot
 
 ```{r}
